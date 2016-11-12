@@ -1,7 +1,5 @@
 #include "img_proc.h"
 #include "win32_wowrotation.h"
-//#include "kiss_fft130\tools\kiss_fftnd.h"
-#include "kiss_fft130\kiss_fft.h"
 #include "kiss_fft130\_kiss_fft_guts.h"
 #include "kiss_fft130\tools\kiss_fftndr.h"
 #include <map>
@@ -14,49 +12,6 @@ struct cached_image
 };
 std::map<size_t, cached_image> ImageCache;
 cached_image LastImage;
-
-bitmap_contexts
-InitWindowBitmaps(bitmap_contexts BMContext)
-{
-	DeleteDC(BMContext.HdcDest);
-	DeleteObject(BMContext.CapturedImage.BitmapHandle);
-	BMContext.HdcDest = CreateCompatibleDC(BMContext.HdcSource);
-	HBITMAP BitmapHandle;
-	int x_size = BMContext.Region.right - BMContext.Region.left;
-	int y_size = BMContext.Region.bottom - BMContext.Region.top;
-
-	unsigned char* BitmapPixels;
-
-	dib_header DibHeader = {};
-	DibHeader.Width = x_size;
-	DibHeader.Height = -y_size;
-	DibHeader.BitsPerPixel = 32;
-
-	BitmapHandle = CreateDIBSection(BMContext.HdcSource, (BITMAPINFO *)&DibHeader, DIB_RGB_COLORS, (void **)&BitmapPixels, NULL, 0);
-
-	SelectObject(BMContext.HdcDest, BitmapHandle);
-
-	image_bitmap Img = {};
-	DibHeader.Height = -DibHeader.Height;
-	Img.BitmapHandle = BitmapHandle;
-	Img.BitmapPixels = BitmapPixels;
-	Img.Header = DibHeader;
-	BMContext.CapturedImage = Img;
-
-	return(BMContext);
-}
-
-void 
-UpdateBitmap(bitmap_contexts& BMContext)
-{
-	int x_size = BMContext.Region.right - BMContext.Region.left;
-	int y_size = BMContext.Region.bottom - BMContext.Region.top;
-	if (BMContext.CapturedImage.Header.Width != x_size || BMContext.CapturedImage.Header.Height != y_size)
-	{
-		BMContext = InitWindowBitmaps(BMContext);
-	}
-	BitBlt(BMContext.HdcDest, 0, 0, x_size, y_size, BMContext.HdcSource, BMContext.Region.left, BMContext.Region.top, SRCCOPY);
-}
 
 void
 BGR2Grey(image_bitmap Image)
@@ -178,6 +133,7 @@ GetDft(image_bitmap Image, int Inverse, int NCols, int NRows, kiss_fft_cpx* Inve
 	return(FftOut);
 }
 
+//TODO: Should make sure this is the correct way to do cross correlation (test against sums of products)
 kiss_fft_scalar*
 CrossCorr(image_bitmap Image, image_bitmap TemplateImage)
 {

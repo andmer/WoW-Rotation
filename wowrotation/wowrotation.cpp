@@ -2,6 +2,49 @@
 #include "img_proc.h"
 #include <ctime>
 
+bitmap_contexts
+InitWindowBitmaps(bitmap_contexts BMContext)
+{
+	DeleteDC(BMContext.HdcDest);
+	DeleteObject(BMContext.CapturedImage.BitmapHandle);
+	BMContext.HdcDest = CreateCompatibleDC(BMContext.HdcSource);
+	HBITMAP BitmapHandle;
+	int x_size = BMContext.Region.right - BMContext.Region.left;
+	int y_size = BMContext.Region.bottom - BMContext.Region.top;
+
+	unsigned char* BitmapPixels;
+
+	dib_header DibHeader = {};
+	DibHeader.Width = x_size;
+	DibHeader.Height = -y_size;
+	DibHeader.BitsPerPixel = 32;
+
+	BitmapHandle = CreateDIBSection(BMContext.HdcSource, (BITMAPINFO *)&DibHeader, DIB_RGB_COLORS, (void **)&BitmapPixels, NULL, 0);
+
+	SelectObject(BMContext.HdcDest, BitmapHandle);
+
+	image_bitmap Img = {};
+	DibHeader.Height = -DibHeader.Height;
+	Img.BitmapHandle = BitmapHandle;
+	Img.BitmapPixels = BitmapPixels;
+	Img.Header = DibHeader;
+	BMContext.CapturedImage = Img;
+
+	return(BMContext);
+}
+
+void
+UpdateBitmap(bitmap_contexts& BMContext)
+{
+	int x_size = BMContext.Region.right - BMContext.Region.left;
+	int y_size = BMContext.Region.bottom - BMContext.Region.top;
+	if (BMContext.CapturedImage.Header.Width != x_size || BMContext.CapturedImage.Header.Height != y_size)
+	{
+		BMContext = InitWindowBitmaps(BMContext);
+	}
+	BitBlt(BMContext.HdcDest, 0, 0, x_size, y_size, BMContext.HdcSource, BMContext.Region.left, BMContext.Region.top, SRCCOPY);
+}
+
 std::vector<image_bitmap>
 InitTemplateImages()
 {
@@ -96,6 +139,7 @@ GetNextKey(image_bitmap& Image, std::vector<image_bitmap> TemplateImages, win32_
 	size_t BestScore = _UI64_MAX;
 	for (auto i : TemplateImages)
 	{
+		//NOTE: Resizing makes this more accurate
 		image_bitmap ResizedI = ResizeImageNN(i, Image.Header.Width, Image.Header.Height);
 		size_t Diff = MatchTemplateSqDiff(Image, ResizedI);
 		if (BestScore > Diff)
