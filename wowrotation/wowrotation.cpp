@@ -12,7 +12,7 @@ InitWindowBitmaps(bitmap_contexts BMContext)
 	int x_size = BMContext.Region.right - BMContext.Region.left;
 	int y_size = BMContext.Region.bottom - BMContext.Region.top;
 
-	unsigned char* BitmapPixels;
+	unsigned char *BitmapPixels;
 
 	dib_header DibHeader = {};
 	DibHeader.Width = x_size;
@@ -54,12 +54,12 @@ InitTemplateImages()
 	std::vector<image_bitmap> TemplateImages;
 	for (auto Name : BMNames)
 	{
-		void* Data = ReadEntireFile(PathToImages + Name);
+		void *Data = ReadEntireFile(PathToImages + Name);
 
 		if (Data)
 		{
 			bitmap_header BMHeader = *(bitmap_header *)Data;
-			unsigned char* Pixels = (unsigned char*)Data + BMHeader.BitmapOffset;
+			unsigned char *Pixels = (unsigned char *)Data + BMHeader.BitmapOffset;
 
 			//NOTE: make our origin in top left by flipping vertically
 			int BytesPerPix = BMHeader.BitsPerPixel / 8;
@@ -117,13 +117,11 @@ DisplayMainImage(bitmap_contexts& BMContext, win32_handles Win32Handles)
 	BMCopy.BitmapHandle = BMContext.CapturedImage.BitmapHandle;
 	BMCopy.Header = BMContext.CapturedImage.Header;
 	BMCopy.ImageName = BMContext.CapturedImage.ImageName;
-	BMCopy.BitmapPixels = (unsigned char*)AllocHeap(LPTR, BMCopy.Header.Width*BMCopy.Header.Height*(BMCopy.Header.BitsPerPixel / 8));
+	BMCopy.BitmapPixels = (unsigned char *)AllocHeap(LPTR, BMCopy.Header.Width*BMCopy.Header.Height*(BMCopy.Header.BitsPerPixel / 8));
 	memcpy(BMCopy.BitmapPixels, BMContext.CapturedImage.BitmapPixels, BMCopy.Header.Width*BMCopy.Header.Height*(BMCopy.Header.BitsPerPixel / 8));
 
 	if (IsWindowVisible(Win32Handles.RectSelector))
-	{
-		RemoveAlphaBlend(BMCopy, RGBQUAD{ 100, 100, 230, 0 }, 150.0);
-	}
+	{	RemoveAlphaBlend(BMCopy, RGBQUAD{ 100, 100, 230, 0 }, 150.0); }
 	DrawBitmap(BMCopy, 15, 15, Win32Handles.MainWindow, true);
 }
 
@@ -150,17 +148,16 @@ GetNextKey(image_bitmap& Image, std::vector<image_bitmap> TemplateImages, win32_
 		DeallocHeap((void*)ResizedI.BitmapPixels);
 	}
 	DrawBitmap(BestMatch, 185, 15, Win32Handles.MainWindow);
+
 	size_t ExtDot = BestMatch.ImageName.find_last_of(".");
 	int Key = -1;
 	if (ExtDot != std::string::npos)
-	{
-		Key = stoi(BestMatch.ImageName.substr(0, ExtDot));
-	}
+	{	Key = stoi(BestMatch.ImageName.substr(0, ExtDot)); }
 	return(Key);
 }
 
 int
-MainRotationLoop(win32_state* Win32State)
+MainRotationLoop(win32_state *Win32State)
 {
 	clock_t Time;
 	Time = clock();

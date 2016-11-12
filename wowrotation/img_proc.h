@@ -39,7 +39,7 @@ struct image_bitmap
 {
 	HBITMAP BitmapHandle;
 	dib_header Header;
-	unsigned char* BitmapPixels;
+	unsigned char *BitmapPixels;
 	std::string ImageName;
 };
 

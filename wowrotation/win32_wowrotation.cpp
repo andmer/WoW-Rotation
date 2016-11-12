@@ -43,7 +43,7 @@ GetWindowHandles()
 void*
 ReadEntireFile(std::string FileName)
 {
-	void* Result;
+	void *Result;
 
 	HANDLE FileHandle = CreateFileA(FileName.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 	if (FileHandle != INVALID_HANDLE_VALUE)
@@ -52,7 +52,7 @@ ReadEntireFile(std::string FileName)
 		if (GetFileSizeEx(FileHandle, &FileSize))
 		{
 			unsigned long int FileSize32 = (unsigned long int)FileSize.QuadPart;
-			Result = (void*)AllocHeap(LPTR, FileSize32);
+			Result = (void *)AllocHeap(LPTR, FileSize32);
 			if (Result)
 			{
 				DWORD BytesRead;
@@ -154,10 +154,10 @@ HandlePaint(HWND hwnd)
 				//NOTE: need to make height negative so it renders in correct orientation
 				Item.Image.Header.Height = -Item.Image.Header.Height;
 				StretchDIBits(hdc, Item.X, Item.Y, Item.DestWidth, Item.DestHeight, 0, 0, Item.Image.Header.Width,
-					-Item.Image.Header.Height, Item.Image.BitmapPixels, (BITMAPINFO*)&Item.Image.Header, DIB_RGB_COLORS, SRCCOPY);
+					-Item.Image.Header.Height, Item.Image.BitmapPixels, (BITMAPINFO *)&Item.Image.Header, DIB_RGB_COLORS, SRCCOPY);
 				Item.Image.Header.Height = -Item.Image.Header.Height;
 				if (Item.Free)
-					DeallocHeap((void*)Item.Image.BitmapPixels);
+				{	DeallocHeap((void *)Item.Image.BitmapPixels); }
 			}
 			else
 			{
@@ -195,9 +195,7 @@ void
 HandleButtonClicked(HWND ButtonHwnd)
 {
 	if (ButtonHwnd == Win32Handles.RectShowButton)
-	{
-		ShowWindow(Win32Handles.RectSelector, SW_SHOW);
-	}
+	{	ShowWindow(Win32Handles.RectSelector, SW_SHOW); }
 }
 
 void
@@ -331,7 +329,7 @@ BYTE*
 ReadFromRegistry(LPCWSTR ValueName)
 {
 	DWORD DataBytes = 0;
-	BYTE* Data = nullptr;
+	BYTE *Data = nullptr;
 	HKEY RegHandle;
 	LPCWSTR SubLocation = L"SOFTWARE\\wowrotation";
 	if (RegCreateKeyEx(HKEY_CURRENT_USER, SubLocation, 0, 0, 0, KEY_ALL_ACCESS, 0, &RegHandle, 0) == ERROR_SUCCESS)
@@ -350,10 +348,7 @@ SaveWindowPlacement(HWND hwnd)
 	WINDOWPLACEMENT wp = { 0 };
 	wp.length = sizeof(wp);
 	if (GetWindowPlacement(hwnd, &wp))
-	{
-		SaveToRegistry(L"RegionPlacement", REG_BINARY, (BYTE*)&wp, wp.length);
-	}
-	int breakhere = 3;
+	{	SaveToRegistry(L"RegionPlacement", REG_BINARY, (BYTE*)&wp, wp.length); }
 }
 
 void
@@ -395,7 +390,7 @@ HandleKeyboard(win32_state* WinState, bool* KeyPressed)
 }
 
 void
-HandleInput(win32_state* WinState)
+HandleInput(win32_state *WinState)
 {
 	bool KeyPressed[254] = {};
 	while (!WinState->Quitting)
@@ -432,9 +427,7 @@ DrawBitmap(image_bitmap Image, int X, int Y, HWND Handle, bool FreeAfter)
 	DrawItem.Handle = Handle;
 	DrawItem.Free = FreeAfter;
 	if (!Win32State.Drawing)
-	{
-		DrawQueue.push_back(DrawItem);	
-	}
+	{	DrawQueue.push_back(DrawItem);	}
 	InvalidateRect(Handle, NULL, NULL);
 	Win32State.WritingDraw = false;
 }
@@ -461,7 +454,7 @@ InitOtherWindows(HINSTANCE hInstance, WNDCLASSEX WindowClass)
 	{
 		SetLayeredWindowAttributes(Win32Handles.RectSelector, 0, 150, LWA_ALPHA);
 		UpdateWindow(Win32Handles.RectSelector);
-		WINDOWPLACEMENT wp = *(WINDOWPLACEMENT*)ReadFromRegistry(L"RegionPlacement");
+		WINDOWPLACEMENT wp = *(WINDOWPLACEMENT *)ReadFromRegistry(L"RegionPlacement");
 		SetWindowPlacement(Win32Handles.RectSelector, &wp);
 		ShowWindow(Win32Handles.RectSelector, SW_HIDE);
 	}
@@ -470,9 +463,7 @@ InitOtherWindows(HINSTANCE hInstance, WNDCLASSEX WindowClass)
 	Win32Handles.RectShowButton = CreateWindow(L"BUTTON", L"Select Region", WS_VISIBLE | WS_CHILD | BS_FLAT,
 		40, 200, 105, 30, Win32Handles.MainWindow, 0, hInstance, 0);
 	if (Win32Handles.RectShowButton)
-	{
-		SendMessage(Win32Handles.RectShowButton, WM_SETFONT, (WPARAM)ButtonFont, 1);
-	}
+	{	SendMessage(Win32Handles.RectShowButton, WM_SETFONT, (WPARAM)ButtonFont, 1); }
 }
 
 void

@@ -8,7 +8,7 @@ struct cached_image
 {
 	size_t SumCheck = -1;
 	image_bitmap Image;
-	kiss_fft_cpx* DiscreteFourier = 0;
+	kiss_fft_cpx *DiscreteFourier = 0;
 };
 std::map<size_t, cached_image> ImageCache;
 cached_image LastImage;
@@ -22,11 +22,11 @@ BGR2Grey(image_bitmap Image)
 	int Width = Image.Header.Width;
 	int Height = Image.Header.Height;
 	int BytesPerPixel = (Image.Header.BitsPerPixel / 8);
-	unsigned char* Pixel = Image.BitmapPixels;
+	unsigned char *Pixel = Image.BitmapPixels;
 
-	for (int row = 0; row < Height; row++)
+	for (int row = 0; row < Height; ++row)
 	{
-		for (int col = 0; col < Width; col++, Pixel+=BytesPerPixel)
+		for (int col = 0; col < Width; ++col, Pixel += BytesPerPixel)
 		{		
 			tmp = (*(Pixel + 2) << 1);
 			tmp += (*(Pixel + 1) << 2) + *(Pixel + 1);
@@ -40,31 +40,35 @@ BGR2Grey(image_bitmap Image)
 	}
 }
 
-void
-IntegralSqSum(image_bitmap Image, size_t* SumSq)
+size_t*
+IntegralSqSum(image_bitmap Image)
 {
+	size_t *IgSumSq = 
+		(size_t *)AllocHeap(HEAP_ZERO_MEMORY, sizeof(size_t) * (Image.Header.Width * Image.Header.Height + Image.Header.Width + Image.Header.Height + 1));
+	size_t *IgSumSqIter = IgSumSq;
+
 	int Width = Image.Header.Width;
 	int Height = Image.Header.Height;
-	unsigned char* BitmapPixels = Image.BitmapPixels;
+	unsigned char *BitmapPixels = Image.BitmapPixels;
 
 	int SumRowSize = Width + 1;
 	int BytesPerPixel = (Image.Header.BitsPerPixel / 8);
 	int SrcRowSize = BytesPerPixel * Width;
 	
-	SumSq += SumRowSize + 1;
+	IgSumSqIter += SumRowSize + 1;
 	
-	for (int row = 0; row < Height; row++, SumSq++)
+	for (int row = 0; row < Height; ++row, ++IgSumSqIter)
 	{
 		size_t SumRow = 0;
-		for (int col = 0; col < Width; col++, SumSq++)
+		for (int col = 0; col < Width; ++col, ++IgSumSqIter)
 		{
 			size_t Pix = *BitmapPixels;
 			BitmapPixels += BytesPerPixel;
-			SumRow += Pix*Pix;
-			*SumSq = *(SumSq-SumRowSize)+SumRow;
+			SumRow += Pix * Pix;
+			*IgSumSqIter = *(IgSumSqIter-SumRowSize) + SumRow;
 		}
 	}
-	int breakpoint = 3;
+	return(IgSumSq);
 }
 
 size_t
@@ -73,12 +77,14 @@ SqSum(image_bitmap Image)
 	int Width = Image.Header.Width;
 	int Height = Image.Header.Height;
 	int BytesPerPixel = (Image.Header.BitsPerPixel / 8);
-	unsigned char* Pixel = Image.BitmapPixels;
+	unsigned char *Pixel = Image.BitmapPixels;
 
 	size_t SqSum = 0;
-	for (int row = 0; row < Height; row++)
-		for (int col = 0; col < Width; col++, Pixel += BytesPerPixel)
-			SqSum += (*Pixel) * (*Pixel);
+	for (int row = 0; row < Height; ++row)
+	{
+		for (int col = 0; col < Width; ++col, Pixel += BytesPerPixel)
+		{	SqSum += (*Pixel) * (*Pixel); }
+	}
 	return(SqSum);
 }
 
@@ -87,19 +93,19 @@ GetDftSize(int Size)
 {
 	int DftSize;
 	for (DftSize = 64; DftSize < INT_MAX; DftSize *= 2)
-		if (DftSize >= Size) break;
+	{	if (DftSize >= Size) break; }
 	return(DftSize);
 }
 
 void*
-GetDft(image_bitmap Image, int Inverse, int NCols, int NRows, kiss_fft_cpx* InverseThis = 0)
+GetDft(image_bitmap Image, int Inverse, int NCols, int NRows, kiss_fft_cpx *InverseThis = 0)
 {
 	int Dims[2] = { NCols, NRows };
 	int NDims = 2;
 	kiss_fftndr_cfg State = kiss_fftndr_alloc(Dims, NDims, Inverse, 0, 0);
-	kiss_fft_scalar* FftBuffer = new kiss_fft_scalar[NCols*NRows];
+	kiss_fft_scalar *FftBuffer = new kiss_fft_scalar[NCols * NRows];
 	
-	void* FftOut;
+	void *FftOut;
 	if (Inverse == 0)
 	{
 		size_t OutSize = sizeof(kiss_fft_cpx)*(NCols*(NRows/2+1));
@@ -111,21 +117,20 @@ GetDft(image_bitmap Image, int Inverse, int NCols, int NRows, kiss_fft_cpx* Inve
 			{
 				if (x < Image.Header.Width && y < Image.Header.Height)
 				{
-					FftBuffer[x + y*NCols] = (float)*ImageIter;
+					FftBuffer[x + y * NCols] = (float)*ImageIter;
 					ImageIter += (Image.Header.BitsPerPixel / 8);
 				}
 				else
-					FftBuffer[x + y*NCols] = 0.0;
+					FftBuffer[x + y * NCols] = 0.0;
 			}
 
-		kiss_fftndr(State, FftBuffer, (kiss_fft_cpx*)FftOut);
-		int breakhere = 3;
+		kiss_fftndr(State, FftBuffer, (kiss_fft_cpx *)FftOut);
 	}
 	else
 	{
-		size_t OutSize = sizeof(kiss_fft_scalar)*NCols*NRows;
+		size_t OutSize = sizeof(kiss_fft_scalar) * NCols * NRows;
 		FftOut = AllocHeap(LPTR, OutSize);
-		kiss_fftndri(State, InverseThis, (kiss_fft_scalar*)FftOut);
+		kiss_fftndri(State, InverseThis, (kiss_fft_scalar *)FftOut);
 	}
 
 	kiss_fft_free(State);
@@ -142,29 +147,25 @@ CrossCorr(image_bitmap Image, image_bitmap TemplateImage)
 	int SizeY = GetDftSize(Image.Header.Height);
 	//NOTE: DFTs are cached
 	size_t ImCheck = SqSum(Image);
-	kiss_fft_cpx* ImageDft;
-	kiss_fft_cpx* TemplateDft;
+	kiss_fft_cpx *ImageDft;
+	kiss_fft_cpx *TemplateDft;
 	size_t TmCheck = SqSum(TemplateImage);
 	if (LastImage.SumCheck == ImCheck)
-	{
-		ImageDft = LastImage.DiscreteFourier;
-	}
+	{	ImageDft = LastImage.DiscreteFourier; }
 	else
 	{
 		LastImage.SumCheck = ImCheck;
-		ImageDft = (kiss_fft_cpx*)GetDft(Image, 0, SizeX, SizeY);
+		ImageDft = (kiss_fft_cpx *)GetDft(Image, 0, SizeX, SizeY);
 		if (LastImage.DiscreteFourier != 0)
-			DeallocHeap((void*)LastImage.DiscreteFourier);
+			DeallocHeap((void *)LastImage.DiscreteFourier);
 		LastImage.DiscreteFourier = ImageDft;
 	}
 	auto TemplateFound = ImageCache.find(TmCheck);
 	if (TemplateFound != ImageCache.end())
-	{
-		TemplateDft = ImageCache[TmCheck].DiscreteFourier;
-	}
+	{	TemplateDft = ImageCache[TmCheck].DiscreteFourier; }
 	else
 	{
-		TemplateDft = (kiss_fft_cpx*)GetDft(TemplateImage, 0, SizeX, SizeY);
+		TemplateDft = (kiss_fft_cpx *)GetDft(TemplateImage, 0, SizeX, SizeY);
 		cached_image ci = {};
 		ci.SumCheck = TmCheck;
 		ci.Image = TemplateImage;
@@ -172,8 +173,8 @@ CrossCorr(image_bitmap Image, image_bitmap TemplateImage)
 		ImageCache[TmCheck] = ci;
 	}
 
-	kiss_fft_cpx* CorrBuffer = new kiss_fft_cpx[SizeX*(SizeY/2+1)];
-	for (int i = 0; i < (SizeX*(SizeY / 2 + 1)); ++i)
+	kiss_fft_cpx *CorrBuffer = new kiss_fft_cpx[SizeX * (SizeY / 2 + 1)];
+	for (int i = 0; i < (SizeX * (SizeY / 2 + 1)); ++i)
 	{
 		kiss_fft_cpx c = { 0, 0 };
 		kiss_fft_cpx conj = { ImageDft[i].r, ImageDft[i].i * -1 };
@@ -182,11 +183,9 @@ CrossCorr(image_bitmap Image, image_bitmap TemplateImage)
 		CorrBuffer[i] = c;
 	}
 
-	kiss_fft_scalar* Correlations = (kiss_fft_scalar*)GetDft({ 0 }, 1, SizeX, SizeY, CorrBuffer);
-	for (int i = 0; i < (SizeX*SizeY); ++i)
-	{
-		Correlations[i] /= (SizeX*SizeY);
-	}
+	kiss_fft_scalar *Correlations = (kiss_fft_scalar *)GetDft({ 0 }, 1, SizeX, SizeY, CorrBuffer);
+	for (int i = 0; i < (SizeX * SizeY); ++i)
+	{	Correlations[i] /= (SizeX * SizeY); }
 
 	delete[] CorrBuffer;
 	return(Correlations);
@@ -217,19 +216,16 @@ size_t
 MatchTemplateSqDiff(image_bitmap Image, image_bitmap TemplateImage)
 {
 	if (TemplateImage.Header.Height > Image.Header.Height || TemplateImage.Header.Width > Image.Header.Width)
-		SwapPictures(Image, TemplateImage);
+	{	SwapPictures(Image, TemplateImage); }
 
 	//NOTE: This means the template can NEVER fit into the main image
 	if (Image.Header.Height < TemplateImage.Header.Height || Image.Header.Width < TemplateImage.Header.Width)
-		return(_UI64_MAX); 
+	{	return(_UI64_MAX); }
 
-	kiss_fft_scalar* Corrs = CrossCorr(Image, TemplateImage);
+	kiss_fft_scalar *Corrs = CrossCorr(Image, TemplateImage);
 
-	void* p = AllocHeap(HEAP_ZERO_MEMORY,
-		sizeof(size_t)*(Image.Header.Width*Image.Header.Height + (Image.Header.Width) + Image.Header.Height + 1));
-	size_t* SumSq = (size_t*)p;
-
-	IntegralSqSum(Image, SumSq);
+	size_t *IgSumSq, *IgSqIter;
+	IgSumSq = IgSqIter = IntegralSqSum(Image);
 	size_t TemplateSum = SqSum(TemplateImage);
 
 	int StepRow = Image.Header.Width + 1;
@@ -237,17 +233,18 @@ MatchTemplateSqDiff(image_bitmap Image, image_bitmap TemplateImage)
 	int MaxRows = Image.Header.Height - TemplateImage.Header.Height + 1;
 	int DftXPad = GetDftSize(MaxCols) - MaxCols;
 
-	long double SqDiff = 0.0;
+	long double SqDiff;
 	long double BestSqDiff = LDBL_MAX;
 	long double LargestSqDiff = 0.0;
-	for (int row = 0, CorrI = 0; row < MaxRows; row++, SumSq += TemplateImage.Header.Width, CorrI += DftXPad)
+	for (int row = 0, CorrI = 0; row < MaxRows; ++row, IgSqIter += TemplateImage.Header.Width, CorrI += DftXPad)
 	{
-		for (int col = 0; col < MaxCols; col++, SumSq++, CorrI++)
+		for (int col = 0; col < MaxCols; ++col, ++IgSqIter, ++CorrI)
 		{
-			long long int ImageSqSum = *(SumSq + (StepRow * TemplateImage.Header.Height) + TemplateImage.Header.Width) + // bottom right
-				*(SumSq) - // top left
-				*(SumSq + TemplateImage.Header.Width) - // top right
-				*(SumSq + (StepRow*TemplateImage.Header.Height)); // bottom left
+			long long int ImageSqSum = 
+				*(IgSqIter + (StepRow * TemplateImage.Header.Height) + TemplateImage.Header.Width) + // bottom right
+				*(IgSqIter) - // top left
+				*(IgSqIter + TemplateImage.Header.Width) - // top right
+				*(IgSqIter + (StepRow * TemplateImage.Header.Height)); // bottom left
 			long double c = 2 * Corrs[CorrI];
 
 			SqDiff = ImageSqSum + TemplateSum - c;
@@ -259,8 +256,8 @@ MatchTemplateSqDiff(image_bitmap Image, image_bitmap TemplateImage)
 				bool t = true;
 		}
 	}
-	DeallocHeap(p);
-	DeallocHeap((void*)Corrs);
+	DeallocHeap((void *)IgSumSq);
+	DeallocHeap((void *)Corrs);
 	
 	return((size_t)BestSqDiff);
 }
@@ -268,7 +265,7 @@ MatchTemplateSqDiff(image_bitmap Image, image_bitmap TemplateImage)
 image_bitmap
 ResizeImageNN(image_bitmap Image, int Width, int Height)
 {
-	unsigned char* ResizedImagePixels = (unsigned char*)AllocHeap(LPTR, Width*Height*(Image.Header.BitsPerPixel / 8));
+	unsigned char *ResizedImagePixels = (unsigned char *)AllocHeap(LPTR, Width * Height * (Image.Header.BitsPerPixel / 8));
 	int XRatio = (int)((Image.Header.Width << 16) / Width) + 1;
 	int YRatio = (int)((Image.Header.Height << 16) / Height) + 1;
 
@@ -278,11 +275,11 @@ ResizeImageNN(image_bitmap Image, int Width, int Height)
 	{
 		for (int row = 0; row < Height; ++row)
 		{
-			col2 = ((col*XRatio) >> 16);
-			row2 = ((row*YRatio) >> 16);
-			*(ResizedImagePixels + (row*Width*BytesPerPixel) + (col * BytesPerPixel)) = *(Image.BitmapPixels + (row2*Image.Header.Width*BytesPerPixel) + (col2*BytesPerPixel));
-			*(ResizedImagePixels + (row*Width*BytesPerPixel) + (col * BytesPerPixel) + 1) = *(Image.BitmapPixels + (row2*Image.Header.Width*BytesPerPixel) + (col2*BytesPerPixel) + 1);
-			*(ResizedImagePixels + (row*Width*BytesPerPixel) + (col * BytesPerPixel) + 2) = *(Image.BitmapPixels + (row2*Image.Header.Width*BytesPerPixel) + (col2*BytesPerPixel) + 2);
+			col2 = ((col * XRatio) >> 16);
+			row2 = ((row * YRatio) >> 16);
+			*(ResizedImagePixels + (row * Width * BytesPerPixel) + (col * BytesPerPixel)) = *(Image.BitmapPixels + (row2 * Image.Header.Width * BytesPerPixel) + (col2 * BytesPerPixel));
+			*(ResizedImagePixels + (row * Width * BytesPerPixel) + (col * BytesPerPixel) + 1) = *(Image.BitmapPixels + (row2 * Image.Header.Width * BytesPerPixel) + (col2 * BytesPerPixel) + 1);
+			*(ResizedImagePixels + (row * Width * BytesPerPixel) + (col * BytesPerPixel) + 2) = *(Image.BitmapPixels + (row2 * Image.Header.Width * BytesPerPixel) + (col2 * BytesPerPixel) + 2);
 		}
 	}
 	image_bitmap ResizedImage = Image;
@@ -296,14 +293,14 @@ ResizeImageNN(image_bitmap Image, int Width, int Height)
 void
 RemoveAlphaBlend(image_bitmap Image, RGBQUAD Color, float alpha)
 {
-	unsigned char* ImageIter = Image.BitmapPixels;
+	unsigned char *ImageIter = Image.BitmapPixels;
 	int BytesPerPixel = Image.Header.BitsPerPixel / 8;
 	alpha /= 255.0;
-	for (int i = 0; i < (Image.Header.Width*Image.Header.Height); ++i, ImageIter+=BytesPerPixel)
+	for (int i = 0; i < (Image.Header.Width*Image.Header.Height); ++i, ImageIter += BytesPerPixel)
 	{
-		*ImageIter = (unsigned char)(((*ImageIter) - (alpha*Color.rgbBlue)) / (1 - alpha));
-		*(ImageIter+1) = (unsigned char)(((*(ImageIter + 1)) - (alpha*Color.rgbGreen)) / (1-alpha));
-		*(ImageIter + 2) = (unsigned char)(((*(ImageIter + 2)) - (alpha*Color.rgbRed)) / (1-alpha));
+		*ImageIter = (unsigned char)(((*ImageIter) - (alpha * Color.rgbBlue)) / (1 - alpha));
+		*(ImageIter+1) = (unsigned char)(((*(ImageIter + 1)) - (alpha * Color.rgbGreen)) / (1-alpha));
+		*(ImageIter + 2) = (unsigned char)(((*(ImageIter + 2)) - (alpha * Color.rgbRed)) / (1-alpha));
 	}
 }
 
@@ -312,6 +309,6 @@ void
 FreeImageCache()
 {
 	for (auto i : ImageCache)
-		DeallocHeap((void*)i.second.DiscreteFourier);
+	{	DeallocHeap((void *)i.second.DiscreteFourier); }
 	ImageCache.clear();
 }
