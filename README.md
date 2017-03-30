@@ -3,7 +3,7 @@ This is a rotation bot for World of Warcraft that takes a computer vision approa
 
 This process of determing which ability to use starts with selecting the region where the next ability to use is displayed in-game. We then use the sum of squared differences template matching technique with our known ability template images and the source image to figure out what ability is being shown on screen.
 
-####Sum of Squared Difference:
+#### Sum of Squared Difference:
 ![](http://docs.opencv.org/2.4/_images/math/f096a706cb9499736423f10d901c7fe13a1e6926.png)
 
 The template matching had to be quick so I used some ideas from OpenCV by using an integral image for squared pixel values to quickly get the sum of squares. Read more about that [here](http://aishack.in/tutorials/integral-images-opencv/). 
